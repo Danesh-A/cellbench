@@ -11,6 +11,16 @@ engineers track **models** in a registry, and participants submit
 > Built as a portfolio piece for Arc Institute's Full Stack Engineer role —
 > see [`DESIGN.md`](./DESIGN.md) for the full architecture rationale.
 
+## Screenshots
+
+| | |
+|---|---|
+| ![Landing page](docs/screenshots/landing.png) | ![Dataset catalog](docs/screenshots/datasets.png) |
+| **Landing** — feature overview and nav | **Dataset catalog** — faceted browse with organism / modality filters |
+| ![Challenge leaderboard](docs/screenshots/leaderboard.png) | ![Submit prediction](docs/screenshots/submit.png) |
+| **Leaderboard** — live ranked scores with DES / PDS / MAE breakdown | **Submit** — drag-and-drop h5ad upload, queued for async scoring |
+
+
 ## Powered by real Arc Institute data
 
 CellBench ships configured against **Arc's published Virtual Cell Challenge
