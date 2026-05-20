@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["cellbench_scorer*"]
+
+[project]
+name = "cellbench-scorer"
+version = "0.1.0"
+description = "CellBench scoring worker"
+requires-python = ">=3.12"
+dependencies = [
+    "sqlalchemy>=2.0",
+    "psycopg[binary]>=3.2",
+    "pydantic-settings>=2.3",
+    "boto3>=1.35",
+    "numpy>=2.0",
+    "pandas>=2.2",
+    "anndata>=0.11",
+    "scipy>=1.13",
+    "structlog>=24.4",
+    # cellbench-api is installed as a sibling package by the Dockerfile and
+    # CI workflow (`pip install -e ../api`) — do not list it here so pip
+    # doesn't try to resolve it from PyPI.
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"

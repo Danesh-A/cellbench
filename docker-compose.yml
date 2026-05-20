@@ -1,0 +1,93 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: cellbench
+      POSTGRES_PASSWORD: cellbench
+      POSTGRES_DB: cellbench
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "cellbench"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 60s
+    volumes:
+      # Bind-mount so local edits hot-reload via --reload.
+      - ./apps/api:/app/apps/api
+      - ./apps/scorer:/app/apps/scorer
+      # Mount the host's gcloud Application Default Credentials so the
+      # fetch script can read from the Requester Pays Arc bucket.
+      # On Windows / WSL the host path is `%APPDATA%\gcloud` — see README.
+      - ${GCLOUD_CONFIG_DIR:-~/.config/gcloud}:/root/.config/gcloud:ro
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /root/.config/gcloud/application_default_credentials.json
+    command: >
+      sh -c "alembic upgrade head &&
+             python -m scripts.seed &&
+             (python -m scripts.fetch_vcc_data || echo '[warn] fetch_vcc_data failed — skipping') &&
+             (python -m scripts.baseline_submissions || echo '[warn] baseline_submissions failed — skipping') &&
+             uvicorn cellbench_api.main:app --host 0.0.0.0 --port 8000 --reload"
+
+  scorer:
+    build:
+      context: .
+      dockerfile: apps/scorer/Dockerfile
+    env_file: .env
+    depends_on:
+      api:
+        condition: service_healthy
+    command: ["python", "-m", "cellbench_scorer.worker"]
+
+  web:
+    build:
+      context: ./apps/web
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      API_URL: http://api:8000
+    depends_on:
+      - api
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:
+  miniodata:
